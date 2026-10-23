@@ -1,0 +1,64 @@
+name: Build RP2350 Firmware
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Версия релиза'
+        required: true
+        default: 'v1.0.0'
+jobs:
+  build:
+    name: Build for ${{ matrix.board }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        board: [pico2, waveshare_rp2350_zero]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential python3 git
+      - name: Set up Pico SDK
+        uses: actions/checkout@v4
+        with:
+          repository: raspberrypi/pico-sdk
+          path: pico-sdk
+          submodules: recursive
+      - name: Configure Pico SDK Path
+        run: echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
+      - name: Build Firmware
+        run: |
+          mkdir build
+          cd build
+          cmake -DPICO_BOARD=${{ matrix.board }} -DPICO_PLATFORM=rp2350 ..
+          make -j$(nproc)
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p final_artifacts
+          cp build/rainbow.uf2 final_artifacts/rainbow-${{ matrix.board }}.uf2
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.board }}
+          path: final_artifacts/*.uf2
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: "Firmware ${{ github.event.inputs.release_tag }}"
+          files: |
+            all-artifacts/firmware-*/*.uf2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

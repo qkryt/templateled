@@ -1,0 +1,28 @@
+if (NOT DEFINED PICO_SDK_IMPORT_CMAKE_INCLUDED)
+    set(PICO_SDK_IMPORT_CMAKE_INCLUDED 1)
+    
+    if (NOT DEFINED ENV{PICO_SDK_PATH} AND NOT PICO_SDK_PATH)
+        if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/pico-sdk")
+            set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/pico-sdk")
+        elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk")
+            set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk")
+        elseif (EXISTS "../../pico-sdk")
+            set(PICO_SDK_PATH "../../pico-sdk")
+        endif()
+    endif()
+
+    if (NOT DEFINED ENV{PICO_SDK_PATH} AND NOT PICO_SDK_PATH)
+        message(FATAL_ERROR "PICO_SDK_PATH is not set")
+    endif()
+
+    if (NOT PICO_SDK_PATH)
+        set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+    endif()
+    get_filename_component(PICO_SDK_PATH "${PICO_SDK_PATH}" REALPATH)
+
+    if (NOT EXISTS ${PICO_SDK_PATH})
+        message(FATAL_ERROR "Directory '${PICO_SDK_PATH}' not found")
+    endif()
+    set(PICO_SDK_PATH "${PICO_SDK_PATH}" CACHE PATH "Path to the Pico SDK" FORCE)
+    include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
+endif()
